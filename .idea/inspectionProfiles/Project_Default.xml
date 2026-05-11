@@ -1,0 +1,64 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <list>
+          <option value="litellm" />
+          <option value="tinydb" />
+          <option value="Jinja2" />
+          <option value="thefuzz" />
+          <option value="gspread" />
+          <option value="phonenumbers" />
+          <option value="phone-iso3166" />
+          <option value="curlify" />
+          <option value="pdpyras" />
+          <option value="instructor" />
+          <option value="anthropic" />
+          <option value="html_to_json" />
+          <option value="twilio" />
+          <option value="retell-sdk" />
+          <option value="pandas" />
+          <option value="openpyxl" />
+          <option value="xlrd" />
+          <option value="langchain" />
+          <option value="trafilatura" />
+          <option value="sentence-transformers" />
+          <option value="pydub" />
+          <option value="redash-toolbelt" />
+          <option value="google-auth-oauthlib" />
+          <option value="django-redis" />
+          <option value="redis" />
+          <option value="Crawl4AI" />
+          <option value="lxml_html_clean" />
+          <option value="PyPDF2" />
+          <option value="python-pptx" />
+          <option value="python-docx" />
+          <option value="markdownify" />
+          <option value="nameparser" />
+          <option value="cohere" />
+          <option value="inflect" />
+          <option value="num2words" />
+          <option value="json_repair" />
+          <option value="discord" />
+          <option value="google-genai" />
+          <option value="docling" />
+          <option value="markdown" />
+          <option value="firecrawl-py" />
+          <option value="PyMuPDF" />
+          <option value="pypdf" />
+          <option value="azure-ai-documentintelligence" />
+          <option value="chonkie" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyStubPackagesAdvertiser" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <list>
+          <option value="celery" />
+          <option value="boto3" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>

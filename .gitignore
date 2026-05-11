@@ -1,0 +1,24 @@
+# Environment
+.env
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Generated at ingest time — re-derived by seed.py
+facets.json
+
+# Next.js
+frontend/.next/
+frontend/node_modules/
+frontend/out/
+
+# Internal notes — not for submission
+NOTES.md
+README_IMPL.md
+
+# OS
+.DS_Store

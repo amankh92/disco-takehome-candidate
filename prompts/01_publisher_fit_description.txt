@@ -1,0 +1,67 @@
+You are building a semantic search index for an ad placement system.
+
+Your output will be embedded as a vector and matched against advertiser briefs like:
+  "We sell premium dog food for senior dogs, targeting owners who care about joint health and longevity. Grain-free, vet-formulated, subscription-based."
+  "A sustainable activewear brand for women. Made from recycled ocean plastic. Price point sits between Lululemon and Girlfriend Collective."
+  "We're a DTC vitamin brand for women in their 30s"
+  "Small-batch candles poured by hand in Vermont. Natural soy wax, no synthetic fragrances. Mostly bought as gifts."
+  "We help people feel better."
+  "Technical outerwear for serious backcountry skiers. Our shells are what patrollers wear. Starts at $650, goes up from there."
+  "A new kind of thing for moms."
+
+Given the publisher record below, write a description of the ideal advertiser
+for this publisher — as if the advertiser is describing themselves in a campaign
+brief. Use phrasing like "we sell," "we target," "our customers."
+
+Cover:
+- Specific product or service category (e.g., "premium pet supplements," not "pet products")
+- Target customer: demographics including age range, gender composition, and income tier
+  must all appear explicitly, then mindset and purchase behavior grounded in the notes field
+- Messaging angles grounded in the publisher's notes and audience signals
+- Poor fit: category or positioning mismatches explicitly tied to a publisher signal
+  (AOV, age skew, income tier, gender split, or notes), not generic observations
+
+Field definitions:
+- category / subcategories: the publisher's retail vertical and the specific niches within it
+- income_tier: the household income bracket of the publisher's typical shopper
+  (low, mid, mid-high, high)
+- gender split: share of shoppers by gender, interpret naturally in prose
+  (e.g., 0.82 female means "primarily female audience"; 0.51 male means "roughly even split")
+  Do not echo the raw numbers. This field must surface in the output.
+- monthly shopper reach: estimated unique shoppers exposed to ads per month,
+  signals scale, not engagement quality
+- avg order value (AOV): the typical transaction size on this publisher,
+  a proxy for the price tier of products that convert well here;
+  reference it directionally only ("low basket size," "sub-$30 transactions," "high AOV")
+  do not invent specific price ranges beyond what the AOV field states
+- notes: qualitative editorial context about shopper behavior and messaging fit,
+  treat these as high-trust signals; anchor messaging angles here
+
+Rules:
+- Write as if the advertiser is describing themselves: use "we sell," "we target," "our customers"
+- Every field in the publisher record must inform at least one sentence in the output
+- Do not invent facts, price ranges, or audience behaviors not present in the record
+- Avoid filler phrases ("time-poor consumers," "instant gratification," "on-the-go lifestyle")
+  unless the notes field uses equivalent language
+- State audience and positioning signals as facts, not explanations. Do not explain why
+  a signal matters or what it implies, let the signal speak for itself. Cut any clause
+  that begins with "which means," "this means," "because," or "so that"
+- Do not use em-dashes anywhere in the output. Use commas, colons, or rewrite
+  the sentence instead
+- Advertiser briefs range from precisely specified (product, price point, target demographic)
+  to a single vague sentence ("We help people feel better"). Write prose that would appear
+  relevant when matched against both ends of that spectrum. Avoid language so technical
+  or niche that a thematically aligned but vaguely worded brief would fail to surface
+  this publisher.
+- No headers, titles, bullet points, or bold labels, plain flowing prose only
+- 170–200 words, complete sentences, no truncation
+
+Publisher:
+Category: {category}
+Subcategories: {subcategories}
+Audience age: {min_age}–{max_age}
+Income tier: {income_tier}
+Gender split: female {female_pct}, male {male_pct}
+Monthly shopper reach: {monthly_impressions:,}
+Avg order value: ${aov_usd}
+Notes: {notes}
