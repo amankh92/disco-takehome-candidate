@@ -1,50 +1,112 @@
-# Take-Home Exercise: Ad Placement & Creative Generation
+# Ad Placement & Creative Generation
 
-Hey, thanks for making it this far. Here's the exercise.
+## What I built
 
-## The problem
+**Stack:** FastAPI (Python) · Next.js · PostgreSQL + pgvector · Claude Sonnet (runtime) · Claude Haiku (offline ingest) · OpenAI `text-embedding-3-small`
 
-Build a working prototype where an advertiser describes their business in a sentence or two (something like *"We sell premium dog food for senior dogs, targeting owners who care about joint health"*), and the system produces:
+PostgreSQL handles all three query modes — facet filtering (btree), full-text search (tsvector + GIN), and vector search (pgvector HNSW) — in one datastore. Sonnet is used at runtime for steps that require reasoning; Haiku handles offline fit description generation where the task is well-defined and runs in batch.
 
-1. **A ranked list of recommended publishers** from the provided catalog, with reasoning. Show *why* each publisher is a fit, and ideally, why some publishers in the catalog were *excluded*.
+**Ingestion (offline, run once).** `ingest/seed.py` transforms `publishers.json`, generates a fit description per publisher via Haiku, embeds those descriptions, and upserts everything into Postgres. It also derives `facets.json` — all valid enum values for categories, income tiers, geos, and subcategories — which is used at runtime to constrain the brief understanding LLM's structured output.
 
-2. **3 to 5 ad creative variants** (headline + body copy), each tuned for a different shopper persona that the system thinks is plausible for this advertiser. Make the persona reasoning visible to the user.
+Fit descriptions exist because advertiser briefs and publisher records don't embed near each other naturally. Rewriting each publisher as "what kind of advertiser would do well here" puts both sides in the same embedding space. In production this runs per record at onboarding time; `enrich_publishers()` in `ingest/embed.py` already supports that.
 
-3. **A structured campaign config**: targeting attributes, suggested budget allocation across recommended publishers, bid strategy, whatever fields you think a real ad system would need to actually run this. Make your own call on the shape of it and justify it in the README.
+**Runtime pipeline.**
 
-We've given you a small mock data pack in `data/`:
+```
+Brief
+  → [Sonnet] structured extraction: categories, income tiers, age range, keywords, embedding query
+  → parallel retrieval:
+      Branch A — facet filter (SQL WHERE on high-confidence hard facets)
+      Branch B — hybrid: dense (pgvector ANN) + sparse (tsvector FTS), inner RRF
+  → outer RRF fusion → top-30 candidates
+  → [Sonnet] rerank: fit scores 1–10, per-publisher reasoning, exclusion reasons
+  → parallel:
+      [Sonnet] campaign config — bid strategy (CPM/CPC/CPA), budget allocation, flight, brand safety
+      [Sonnet] creative generation — one variant per persona, single call at temperature 1.0
+```
 
-- `publishers.json`: ~20 publishers across categories (apparel, wellness, pet, home, etc.) with audience demographics, AOV, and qualitative notes
-- `shopper_personas.json`: 10 personas with category affinities, messaging preferences, and what they're disinterested in
-- `example_advertisers.txt`: sample advertiser one-liners ranging from clear to deliberately ambiguous
+4 Sonnet calls per run. Haiku is used only in the offline ingest step.
 
-If you don't have ad-tech background, see `GLOSSARY.md`. It covers everything you need (advertiser, publisher, campaign config, CPM, creative, targeting, etc.). The JD specifically says we're not looking for someone who grew up in ad-tech, so don't worry if these terms are new to you.
+**Outputs:** ranked publisher list with fit scores and exclusion reasons for every non-recommended publisher; 3–5 ad creative variants each tuned to a different shopper persona with reasoning visible; structured campaign config with per-publisher budget allocation and reasoning.
 
-Use whatever LLM, framework, or stack you want. We don't care if it's Next.js or Streamlit or a CLI with a tiny web front-end glued on. We care that we can click through it and see it work.
+**Frontend.** Next.js. Streams pipeline events via SSE and renders each stage (brief understanding, candidate retrieval, rerank preview, final result) as it completes.
 
-## Ground rules
+---
 
-- **Time budget: aim for 6 to 8 hours over a few days.** We would much rather see a tight, working thing than a sprawling half-finished one.
-- **Use AI tools.** Claude Code, Cursor, whatever you live in. We're not testing whether you can type code from scratch. We're testing whether you can direct these tools to ship something real and understand every line that comes out. We will ask you about the code in the follow-up.
-- **No decks. No Figma. No Loom walkthroughs.** Build the thing.
+## How to run
 
-## What to submit
+**Local** (requires PostgreSQL 18 + pgvector)
 
-1. **A working demo**, either hosted (Vercel, Render, Railway, wherever) or runnable locally with clear instructions. If local, a single `npm install && npm run dev` or equivalent.
-2. **The code**, in a GitHub repo (public or shared with us).
-3. **Your prompts**, in a `prompts/` directory in the repo. Every prompt your system uses, in whatever structure makes sense to you.
-4. **A one-page README** covering:
-   - What you built and how to run it
-   - What you would do next if you had another week
-   - What you intentionally cut and why
-   - Which parts of this problem you think are genuinely hard vs. which are easy, and where you think the interesting engineering work actually lives
+macOS:
+```bash
+brew install postgresql@18 pgvector
+brew services start postgresql@18
+```
 
-Keep the README to one page. If it spills onto a second, cut something.
+Linux:
+```bash
+sudo apt-get install -y postgresql-18 postgresql-18-pgvector
+sudo service postgresql start
+```
 
-## What we'll do with this
+Then:
+```bash
+cp .env.example .env                    # add ANTHROPIC_API_KEY and OPENAI_API_KEY
+bash scripts/setup.sh                   # venv, deps, DB schema, seed (~2 min first run)
+bash scripts/start.sh                   # API :8000, frontend :3000
+```
 
-Our engineering team will read the code and run the demo. If it clears that bar, we'll invite you to a 90-minute follow-up where we go deep. You walk us through the demo, we ask about your technical choices, we'll have you make a live change to the code, and we'll talk about how you'd take this from prototype to production at meaningful scale.
+**Docker**
+```bash
+cp .env.example .env        # add API keys
+docker compose up           # seeds DB on first run (~2 min); skipped on restart
+```
 
-Good luck. Have fun with it.
+To reset the database and re-seed from scratch:
+```bash
+docker compose down -v      # removes containers and the persistent volume
+docker compose up
+```
 
-The Disco team
+---
+
+## What I'd do with another week
+
+1. **Pre-computed numerical similarity.** AOV, gender split, and age range are passed as text to the LLM today. At scale these need to be computed in Python before the rerank call — AOV proximity, age range overlap, gender split distance — and injected as structured fields alongside each publisher so the reranker works with explicit numbers rather than text descriptions.
+
+2. **Persona retrieval at scale.** `persona_embedding_query` is extracted on every call, ready for ANN-based persona retrieval when the catalog grows past what fits in a prompt. The publisher retrieval architecture already exists — extending it to personas is straightforward once the catalog warrants it.
+
+3. **Subcategory filtering.** Subcategories are passed to LLMs as context only — the retrieval layer doesn't filter on them, and `facets.json` stores them as a flat list across all verticals. At N=20 this is fine. As the catalog grows, subcategory filtering becomes necessary: category-level first (already in place), subcategory-level second, with subcategories grouped by parent category rather than a flat pool.
+
+---
+
+## What I intentionally cut
+
+**Retrieval parameter tuning.** RRF works on ranks alone, so there's no score calibration needed between branches. But tuning k=60, branch weighting, the confidence threshold (0.6), or any other parameter requires labeled examples to validate against. Building that eval loop is a multi-week investment. Without it, every parameter stays a starting default — which is where they are now.
+
+**Full BM25.** PostgreSQL `ts_rank` (TF-IDF) is close enough at N=20. `ts_rank` doesn't normalize for document length, so longer publisher descriptions score higher regardless of actual term relevance — BM25 corrects for this. The gap doesn't matter at this scale but shows at larger catalogs.
+
+**Category adjacency graph.** Cross-category placements — a brand converting on a publisher in a related vertical because audiences overlap — require encoding which categories are related. Encoding that requires building a graph of adjacent categories and injecting those signals into retrieval and reranking. This is a data modeling problem, not a retrieval tuning problem.
+
+---
+
+## Hard vs easy
+
+**Straightforward:**
+- LLM calls — tool schemas with constrained output and clear system prompts handle most of the complexity
+- Retrieval infrastructure — pgvector + tsvector is standard; the schema, indexes, and queries are well-documented
+- Async pipeline and SSE streaming — FastAPI BackgroundTasks plus an in-process queue is enough for this scale
+
+**Genuinely hard:**
+
+**No labeled data, no way to measure anything.** Retrieval recall, rerank precision, and prompt quality are all unmeasurable without ground truth. This includes the fit description approach itself — Haiku rewrites each publisher record as an ideal advertiser brief to put both sides in the same embedding space, and it works, but there's no way to verify that those descriptions match how real advertisers actually describe their products. The only validation is looking at results manually.
+
+**Numerical signals passed as text.** AOV, gender split, and age range are continuous values. The system encodes them in text and relies on the LLM to approximate proximity rather than compute it. This works at N=20 but is not a real system at scale.
+
+---
+
+## Known gaps
+
+- At N=20 all three retrieval branches return essentially the full catalog — the multi-branch design and RRF fusion are the right patterns for production but aren't load-bearing at this scale. The LLM reranker is the only active precision mechanism. RRF scores are passed to the reranker as a weak signal; the LLM overrides them on fit quality.
+- Error handling covers one case: briefs with average facet confidence below 0.3 are rejected. Empty retrieval sets, malformed LLM outputs, and mid-run DB failures are unhandled.
+- Reloading during a running job loses the result. The backend persists completed jobs and replays on reconnect, but the frontend doesn't store the job ID, so there's nothing to reconnect to mid-run.
