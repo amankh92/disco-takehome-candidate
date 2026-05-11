@@ -88,6 +88,8 @@ docker compose up
 
 **Category adjacency graph.** Cross-category placements — a brand converting on a publisher in a related vertical because audiences overlap — require encoding which categories are related. Encoding that requires building a graph of adjacent categories and injecting those signals into retrieval and reranking. This is a data modeling problem, not a retrieval tuning problem.
 
+**Deterministic budget allocation.** Campaign budget split across publishers is handled by the LLM today. In production this should be a deterministic calculation — CPM-based spend estimates, impression targets, and publisher floor prices fed into a straightforward formula. The LLM approximates this well enough for a prototype but isn't auditable or predictable at scale.
+
 ---
 
 ## Hard vs easy
