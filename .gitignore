@@ -20,5 +20,8 @@ frontend/out/
 NOTES.md
 README_IMPL.md
 
+# IDE
+.idea/
+
 # OS
 .DS_Store
