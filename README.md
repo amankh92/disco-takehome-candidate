@@ -27,7 +27,7 @@ Brief
 
 4 Sonnet calls per run. Haiku is used only in the offline ingest step.
 
-The multi-branch retrieval design — facet filter, dense vector search, sparse full-text search, RRF fusion — is the correct architecture for production, where a catalog that can't fit in a context window requires retrieval to do the narrowing before the LLM is involved. At N=20 publishers all branches return essentially the full catalog, so the LLM reranker is doing all the real selection work. The retrieval layer is load-bearing by design, just not by necessity at this scale.
+The multi-branch retrieval design — facet filter, dense vector search, sparse full-text search, RRF fusion — is an architectural demo of the correct production pattern, where a catalog that can't fit in a context window requires retrieval to do the narrowing before the LLM is involved. At N=20 publishers all branches return essentially the full catalog, so the LLM reranker is doing all the real selection work. The retrieval layer is load-bearing by design, just not by necessity at this scale.
 
 **Outputs:** ranked publisher list with fit scores and exclusion reasons for every non-recommended publisher; 3–5 ad creative variants each tuned to a different shopper persona with reasoning visible; structured campaign config with per-publisher budget allocation and reasoning.
 
