@@ -27,6 +27,8 @@ Brief
 
 4 Sonnet calls per run. Haiku is used only in the offline ingest step.
 
+The multi-branch retrieval design — facet filter, dense vector search, sparse full-text search, RRF fusion — is the correct architecture for production, where a catalog that can't fit in a context window requires retrieval to do the narrowing before the LLM is involved. At N=20 publishers all branches return essentially the full catalog, so the LLM reranker is doing all the real selection work. The retrieval layer is load-bearing by design, just not by necessity at this scale.
+
 **Outputs:** ranked publisher list with fit scores and exclusion reasons for every non-recommended publisher; 3–5 ad creative variants each tuned to a different shopper persona with reasoning visible; structured campaign config with per-publisher budget allocation and reasoning.
 
 **Frontend.** Next.js. Streams pipeline events via SSE and renders each stage (brief understanding, candidate retrieval, rerank preview, final result) as it completes.
@@ -109,6 +111,6 @@ docker compose up
 
 ## Known gaps
 
-- At N=20 all three retrieval branches return essentially the full catalog — the multi-branch design and RRF fusion are the right patterns for production but aren't load-bearing at this scale. The LLM reranker is the only active precision mechanism. RRF scores are passed to the reranker as a weak signal; the LLM overrides them on fit quality.
+- RRF scores are passed to the reranker as a weak signal per publisher; the LLM overrides them on fit quality.
 - Error handling covers one case: briefs with average facet confidence below 0.3 are rejected. Empty retrieval sets, malformed LLM outputs, and mid-run DB failures are unhandled.
 - Reloading during a running job loses the result. The backend persists completed jobs and replays on reconnect, but the frontend doesn't store the job ID, so there's nothing to reconnect to mid-run.
